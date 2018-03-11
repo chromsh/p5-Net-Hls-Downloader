@@ -1,7 +1,7 @@
 {
    "abstract" : "It's new $module",
    "author" : [
-      "chrom <chromsh@gmail.com>"
+      "chrom"
    ],
    "dynamic_config" : 0,
    "generated_by" : "Minilla/v3.0.16, CPAN::Meta::Converter version 2.150001",
@@ -42,6 +42,11 @@
       },
       "runtime" : {
          "requires" : {
+            "Class::Accessor::Lite" : "0",
+            "Crypt::CBC" : "0",
+            "Furl" : "0",
+            "Path::Class" : "0",
+            "Smart::Args" : "0",
             "perl" : "5.008001"
          }
       },
@@ -52,5 +57,19 @@
       }
    },
    "release_status" : "unstable",
-   "version" : "0.01"
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/chromsh/p5-Net-Hls-Downloader/issues"
+      },
+      "homepage" : "https://github.com/chromsh/p5-Net-Hls-Downloader",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/chromsh/p5-Net-Hls-Downloader.git",
+         "web" : "https://github.com/chromsh/p5-Net-Hls-Downloader"
+      }
+   },
+   "version" : "0.01",
+   "x_contributors" : [
+      "chrom <chrom@chromsh.com>"
+   ]
 }
