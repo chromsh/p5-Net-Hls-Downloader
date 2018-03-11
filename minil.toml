@@ -1,0 +1,4 @@
+name = "Net-Hls-Downloader"
+# badges = ["travis"]
+module_maker="ModuleBuildTiny"
+
