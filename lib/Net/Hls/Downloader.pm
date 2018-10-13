@@ -10,6 +10,7 @@ use Crypt::CBC;
 use Path::Class;
 use Class::Accessor::Lite(
 	new	=> 0,
+	ro	=> [qw/agent timeout/],
 
 );
 
