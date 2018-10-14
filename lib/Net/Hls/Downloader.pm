@@ -5,6 +5,7 @@ use warnings;
 our $VERSION = "0.01";
 
 use Furl;
+use File::Basename;
 use Smart::Args;
 use Crypt::CBC;
 use Path::Class;
@@ -13,6 +14,9 @@ use Class::Accessor::Lite(
 	ro	=> [qw/agent timeout/],
 
 );
+
+use Net::Hls::Downloader::Master;
+use Net::Hls::Downloader::Media;
 
 
 sub new {
@@ -37,22 +41,73 @@ sub download {
 		my $save_dir	=> "Str",
 	;
 
+	my $content	= $self->_get_content(url => $url);
+	return if not $content;
+
+	my $base_url	= $self->_base_url(url => $url);
+	my $master	= Net::Hls::Downloader::Master->new(base_url => $base_url, content => $content);
+	# check if master playlist
+	
+	my $media_playlist;
+	if ($master->is_master_playlist) {
+		my $media_playlist_urls	= $master->playlist;
+		# choose most high quality video/audio
+		$media_playlist	= $media_playlist_urls->[0]->{ url };
+	}
+	else {
+		$media_playlist	= $url;
+	}
+
+	# download
+	$self->_download_media(url => $media_playlist, save_dir => $save_dir);
+}
+
+sub _get_content {
+	args
+	my $self,
+		my $url	=> "Str",
+	;
+
 	my $f	= Furl->new(
 		agent	=> $self->agent,
 		timeout	=> $self->timeout,
 	);
-
 	my $res	= $f->get($url);
 	return if not $res->is_success;
+	return $res->body;
+}
 
-	my $master	= Net::Hls::Downloader::Master->new($res->body);
-	# check if master playlist
-	
-	if ($master->is_master_playlist) {
-		my $media_playlist_urls	= $master->playlist;
-		# choose most high quality video/audio
+sub _download_media {
+	args
+	my $self,
+		my $url			=> "Str",
+		my $save_dir	=> "Str",
+	;
+
+	my $content	= $self->_get_content(url => $url);
+	return if not $content;
+
+	my $base_url	= $self->_base_url(url => $url);
+	my $media	= Net::Hls::Downloader::Media->new(base_url => $base_url, content => $content);
+
+	my $dir	= dir($save_dir);
+	$dir->mkpath;
+
+	for my $segment_url (@{ $media->segment }) {
+		my $content	= $self->_get_content(url => $segment_url);
+		return if not $content;
+		my $filename	= basename($segment_url);
+		$dir->file($filename)->spew($content);
 	}
+}
 
+sub _base_url {
+	args
+	my $self,
+		my $url	=> "Str",
+	;
+	my ($base_url)	= ($url =~ m|(^.*/)#?.*|);
+	return $base_url;
 }
 
 
