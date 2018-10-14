@@ -7,7 +7,7 @@ use 5.010;
 use Smart::Args;
 use Class::Accessor::Lite(
 	new => 0,
-	ro	=> [qw/segment/],
+	ro	=> [qw/segment key_url/],
 );
 
 use Net::Hls::Downloader::Tool;
@@ -20,6 +20,13 @@ sub new {
 	;
 	my $self	= _parse(base_url => $base_url, content => $content) || {};
 	return bless $self, $class;
+}
+
+sub need_decrypt {
+	args
+	my $self,
+	;
+	return defined $self->key_url;
 }
 
 
@@ -47,7 +54,7 @@ sub _parse {
 
 	my $version		= 1;
 	my $segments	= [];
-	my $key;
+	my $key_url;
 	my $tags		= {};
 	my $follow_media	= 0;
 	for my $line (@$lines) {
@@ -69,7 +76,7 @@ sub _parse {
 				$follow_media	= 1;
 			}
 			elsif ($tag eq "EXT-X-KEY") {
-				$key	= $parsed_value;
+				$key_url	= $parsed_value;
 			}
 			else {
 				$tags->{ $tag }	||= [];
@@ -89,7 +96,7 @@ sub _parse {
 	return {
 		version	=> $version,
 		segment	=> $segments,
-		key		=> $key,
+		key_url	=> (defined $key_url) ? $key_url->{ URI } : undef,
 	};
 }
 

@@ -1,9 +1,10 @@
 package Net::Hls::Downloader;
-use 5.008001;
+use 5.010;
 use strict;
 use warnings;
 our $VERSION = "0.01";
 
+use Data::Dumper;
 use Furl;
 use File::Basename;
 use Smart::Args;
@@ -11,7 +12,7 @@ use Crypt::CBC;
 use Path::Class;
 use Class::Accessor::Lite(
 	new	=> 0,
-	ro	=> [qw/agent timeout/],
+	ro	=> [qw/agent timeout decrypt/],
 
 );
 
@@ -22,13 +23,15 @@ use Net::Hls::Downloader::Media;
 sub new {
 	args
 	my $class,
-		my $agent	=> {isa => "Maybe[Str]", optional => 1, default => "net-hls-downloader/$VERSION"},
-		my $timeout	=> {isa => "Maybe[Int]", optional => 1, default => 10},
+		my $agent	=> {isa => "Maybe[Str]",  optional => 1, default => "net-hls-downloader/$VERSION"},
+		my $timeout	=> {isa => "Maybe[Int]",  optional => 1, default => 10},
+		my $decrypt	=> {isa => "Maybe[Bool]", optional => 1, default => 1},
 	;
 
 	my $self	= {
 		agent	=> $agent,
 		timeout	=> $timeout,
+		decrypt	=> $decrypt,
 	};
 
 	return bless $self, $class;
@@ -59,7 +62,7 @@ sub download {
 	}
 
 	# download
-	$self->_download_media(url => $media_playlist, save_dir => $save_dir);
+	$self->_download_media(url => $media_playlist, save_dir => $save_dir, decrypt => $self->decrypt);
 }
 
 sub _get_content {
@@ -82,6 +85,7 @@ sub _download_media {
 	my $self,
 		my $url			=> "Str",
 		my $save_dir	=> "Str",
+		my $decrypt		=> {isa => "Maybe[Bool]"},
 	;
 
 	my $content	= $self->_get_content(url => $url);
@@ -89,6 +93,8 @@ sub _download_media {
 
 	my $base_url	= $self->_base_url(url => $url);
 	my $media	= Net::Hls::Downloader::Media->new(base_url => $base_url, content => $content);
+	my $key		= $self->_get_content(url => $media->key_url) if $media->need_decrypt;
+	die "can't retrieve decrypt key" if not $key;
 
 	my $dir	= dir($save_dir);
 	$dir->mkpath;
@@ -96,6 +102,8 @@ sub _download_media {
 	for my $segment_url (@{ $media->segment }) {
 		my $content	= $self->_get_content(url => $segment_url);
 		return if not $content;
+		$content	= $self->_decrypt(key => $key, data => $content) if $decrypt and $key;
+
 		my $filename	= basename($segment_url);
 		$dir->file($filename)->spew($content);
 	}
@@ -110,18 +118,23 @@ sub _base_url {
 	return $base_url;
 }
 
+sub _decrypt {
+	args
+	my $self,
+		my $key		=> "Str",
+		my $data	=> "Str",
+	;
 
-sub _is_master {
-	my $content	= shift;
+	state $cipher = Crypt::CBC->new(
+		-key			=> $key,
+		-keysize		=> 16,
+		-cipher			=> "Crypt::Rijndael",
+		-iv				=> "0000000000000000",
+		-header			=> "none",
+		-literal_key	=> 1,
+	);
 
-	die "neend impl";
-}
-
-
-sub _parse_master_playlist {
-	my $content	= shift;
-
-	die "need impl";
+	return $cipher->decrypt($data);
 }
 
 
